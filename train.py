@@ -120,11 +120,13 @@ def _evaluate(model, loader, criterion, device):
     y_pred = []
     y_prob = []
 
+    use_amp = device.type == "cuda"
     with torch.no_grad():
         for images, labels, _ in tqdm(loader, desc="Validating", leave=False):
             images = images.to(device, non_blocking=True)
             labels = labels.to(device, non_blocking=True)
-            logits = model(images)
+            with torch.autocast(device_type=device.type, dtype=torch.float16, enabled=use_amp):
+                logits = model(images)
             loss = criterion(logits, labels)
             probs = torch.softmax(logits, dim=1)
             preds = torch.argmax(probs, dim=1)
@@ -187,6 +189,7 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--pretrained", type=_str2bool, default=True)
     parser.add_argument("--num_workers", type=int, default=4)
+    parser.add_argument("--amp", action=argparse.BooleanOptionalAction, default=True, help="Enable mixed precision on CUDA.")
     args = parser.parse_args()
 
     set_seed(args.seed)
@@ -206,6 +209,8 @@ def main():
 
     model = build_model(args.model, num_classes=len(CLASS_NAMES), pretrained=args.pretrained)
     model = model.to(device)
+    use_amp = args.amp and device.type == "cuda"
+    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
 
     if args.model == "foundation":
         args.lr = 1e-3
@@ -262,15 +267,21 @@ def main():
             labels = labels.to(device, non_blocking=True)
             optimizer.zero_grad(set_to_none=True)
 
-            logits = model(images)
-            ce_loss = criterion(logits, labels)
-            loss = ce_loss
-            if use_attention_regularization:
-                attention_weights = model.get_attention_weights(images)
-                loss = ce_loss + attention_regularizer(attention_weights)
+            with torch.autocast(device_type=device.type, dtype=torch.float16, enabled=use_amp):
+                logits = model(images)
+                ce_loss = criterion(logits, labels)
+                loss = ce_loss
+                if use_attention_regularization:
+                    attention_weights = model.get_attention_weights(images)
+                    loss = ce_loss + attention_regularizer(attention_weights)
 
-            loss.backward()
-            optimizer.step()
+            if use_amp:
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                loss.backward()
+                optimizer.step()
 
             batch_size = labels.size(0)
             running_loss += loss.item() * batch_size
