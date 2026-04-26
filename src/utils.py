@@ -40,9 +40,13 @@ def reshape_transform_vit(tensor, height=14, width=14):
 
 def reshape_transform_swin(tensor, height=7, width=7):
     """Reshape Swin tokens into a spatial feature map for Grad-CAM."""
-    batch_size, _, channels = tensor.shape
-    result = tensor.reshape(batch_size, height, width, channels)
-    return result.transpose(2, 3).transpose(1, 2)
+    if tensor.ndim == 4:
+        return tensor.permute(0, 3, 1, 2)
+    if tensor.ndim == 3:
+        batch_size, _, channels = tensor.shape
+        result = tensor.reshape(batch_size, height, width, channels)
+        return result.transpose(2, 3).transpose(1, 2)
+    raise ValueError(f"Unsupported Swin tensor shape for Grad-CAM: {tuple(tensor.shape)}")
 
 
 def _denormalize_image(image_tensor: torch.Tensor, model_type: str) -> np.ndarray:

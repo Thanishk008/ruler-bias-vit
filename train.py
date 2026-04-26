@@ -194,6 +194,8 @@ def main():
 
     set_seed(args.seed)
     device = torch.device(args.device if torch.cuda.is_available() or args.device == "cpu" else "cpu")
+    if args.model != "swin" and args.technique != "none":
+        raise ValueError("Techniques are only supported for the swin model. Use --technique none for baseline or foundation.")
     data_root = _resolve_path(args.data_root)
     splits_dir = _resolve_path(args.splits_dir)
     out_dir = _resolve_path(args.out_dir)

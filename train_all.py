@@ -44,13 +44,14 @@ def main():
     args = parser.parse_args()
 
     for model_name in args.models:
+        technique = args.technique if model_name == "swin" else "none"
         cmd = [
             sys.executable,
             str(ROOT / "train.py"),
             "--model",
             model_name,
             "--technique",
-            args.technique,
+            technique,
             "--data_root",
             args.data_root,
             "--splits_dir",

@@ -43,9 +43,15 @@ class BorderPatchMasker:
 
     def _mask_output(self, output: torch.Tensor):
         """Apply Bernoulli masking to border patch embeddings."""
-        if not self.model.training or self.mask_prob <= 0 or output.ndim != 3:
+        if not self.model.training or self.mask_prob <= 0 or output.ndim not in {3, 4}:
             return output
-        batch_size, token_count, _ = output.shape
+        if output.ndim == 4:
+            batch_size, height, width, channels = output.shape
+            token_count = height * width
+            flat_output = output.reshape(batch_size, token_count, channels)
+        else:
+            batch_size, token_count, channels = output.shape
+            flat_output = output
         indices = self._resolve_border_indices(token_count)
         if not indices:
             return output
@@ -53,8 +59,10 @@ class BorderPatchMasker:
         mask = torch.bernoulli(torch.full((batch_size, len(indices)), keep_prob, device=output.device)).to(
             output.dtype
         )
-        masked = output.clone()
+        masked = flat_output.clone()
         masked[:, indices, :] = masked[:, indices, :] * mask.unsqueeze(-1)
+        if output.ndim == 4:
+            return masked.reshape(batch_size, height, width, channels)
         return masked
 
     def _hook(self, module, inputs, output):
