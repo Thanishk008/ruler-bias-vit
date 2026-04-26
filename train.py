@@ -210,7 +210,7 @@ def main():
     model = build_model(args.model, num_classes=len(CLASS_NAMES), pretrained=args.pretrained)
     model = model.to(device)
     use_amp = args.amp and device.type == "cuda"
-    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+    scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
 
     if args.model == "foundation":
         args.lr = 1e-3
