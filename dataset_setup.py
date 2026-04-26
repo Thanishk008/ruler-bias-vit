@@ -42,7 +42,14 @@ def _download_kaggle_dataset(dataset: str, data_root: Path, force: bool = False)
         ) from exc
 
     data_root.mkdir(parents=True, exist_ok=True)
-    kagglehub.dataset_download(dataset, output_dir=str(data_root), force_download=force)
+    try:
+        kagglehub.dataset_download(dataset, output_dir=str(data_root), force_download=force)
+    except FileExistsError:
+        if force:
+            raise
+        # KaggleHub rejects non-empty output directories unless force_download is set.
+        print(f"Data directory {data_root} is not empty; retrying download with force enabled.")
+        kagglehub.dataset_download(dataset, output_dir=str(data_root), force_download=True)
 
 
 def main():
@@ -110,6 +117,8 @@ def main():
             f"Could not find image directory at {image_root}. "
             "Make sure the Kaggle files were downloaded into the expected folder."
         )
+
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     metadata = pd.read_csv(csv_path)
     required_columns = {"image"} | set(LABEL_COLUMNS) | {UNKNOWN_COLUMN}
