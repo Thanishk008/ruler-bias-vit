@@ -43,13 +43,13 @@ def _download_kaggle_dataset(dataset: str, data_root: Path, force: bool = False)
 
     data_root.mkdir(parents=True, exist_ok=True)
     try:
-        kagglehub.dataset_download(dataset, path=str(data_root), force_download=force)
+        kagglehub.dataset_download(dataset, output_dir=str(data_root), force_download=force)
     except FileExistsError:
         if force:
             raise
         # KaggleHub rejects non-empty output directories unless force_download is set.
         print(f"Data directory {data_root} is not empty; retrying download with force enabled.")
-        kagglehub.dataset_download(dataset, path=str(data_root), force_download=True)
+        kagglehub.dataset_download(dataset, output_dir=str(data_root), force_download=True)
 
 
 def main():
