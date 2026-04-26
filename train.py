@@ -127,7 +127,7 @@ def _evaluate(model, loader, criterion, device):
             labels = labels.to(device, non_blocking=True)
             with torch.autocast(device_type=device.type, dtype=torch.float16, enabled=use_amp):
                 logits = model(images)
-            loss = criterion(logits, labels)
+            loss = criterion(logits.float(), labels)
             probs = torch.softmax(logits, dim=1)
             preds = torch.argmax(probs, dim=1)
 
@@ -189,7 +189,7 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--pretrained", type=_str2bool, default=True)
     parser.add_argument("--num_workers", type=int, default=4)
-    parser.add_argument("--amp", action=argparse.BooleanOptionalAction, default=True, help="Enable mixed precision on CUDA.")
+    parser.add_argument("--amp", action=argparse.BooleanOptionalAction, default=False, help="Enable mixed precision on CUDA.")
     args = parser.parse_args()
 
     set_seed(args.seed)
@@ -269,7 +269,7 @@ def main():
 
             with torch.autocast(device_type=device.type, dtype=torch.float16, enabled=use_amp):
                 logits = model(images)
-                ce_loss = criterion(logits, labels)
+                ce_loss = criterion(logits.float(), labels)
                 loss = ce_loss
                 if use_attention_regularization:
                     attention_weights = model.get_attention_weights(images)
