@@ -115,4 +115,4 @@ If `--robustness_test` is set, the test script also writes:
 
 - `baseline` and `swin` fine-tune pretrained weights.
 - `foundation` keeps the CLIP backbone frozen and trains only the classifier head.
-- The codebase is set up for Python 3.10+ because the current KaggleHub dependency requires it.
+- The requirements file installs a CUDA-enabled PyTorch build when available, so the models can use an NVIDIA GPU if one is present (using index lines in requirements.txt).

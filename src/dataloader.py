@@ -57,7 +57,7 @@ def get_transforms(split: str) -> T.Compose:
                 T.RandomVerticalFlip(p=0.5),
                 T.RandomRotation(20),
                 T.ColorJitter(0.2, 0.2, 0.2, 0.1),
-                T.Resize(224, interpolation=InterpolationMode.BILINEAR),
+                T.Resize((224, 224), interpolation=InterpolationMode.BILINEAR),
                 T.ToTensor(),
                 T.Normalize(IMAGENET_MEAN, IMAGENET_STD),
             ]

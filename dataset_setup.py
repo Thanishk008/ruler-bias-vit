@@ -28,7 +28,7 @@ def _build_split_frame(df: pd.DataFrame, split_name: str) -> pd.DataFrame:
 def _dataset_is_present(data_root: Path) -> bool:
     """Check whether the expected Kaggle dataset layout is already available."""
     return (data_root / "ISIC_2019_Training_GroundTruth.csv").exists() and (
-        data_root / "ISIC_2019_Training_Input"
+        data_root / "ISIC_2019_Training_Input" / "ISIC_2019_Training_Input"
     ).exists()
 
 
@@ -43,13 +43,13 @@ def _download_kaggle_dataset(dataset: str, data_root: Path, force: bool = False)
 
     data_root.mkdir(parents=True, exist_ok=True)
     try:
-        kagglehub.dataset_download(dataset, output_dir=str(data_root), force_download=force)
+        kagglehub.dataset_download(dataset, path=str(data_root), force_download=force)
     except FileExistsError:
         if force:
             raise
         # KaggleHub rejects non-empty output directories unless force_download is set.
         print(f"Data directory {data_root} is not empty; retrying download with force enabled.")
-        kagglehub.dataset_download(dataset, output_dir=str(data_root), force_download=True)
+        kagglehub.dataset_download(dataset, path=str(data_root), force_download=True)
 
 
 def main():
@@ -111,7 +111,7 @@ def main():
             "Download ISIC 2019 into data_root first, or let this script download it with kagglehub."
         )
 
-    image_root = data_root / "ISIC_2019_Training_Input"
+    image_root = data_root / "ISIC_2019_Training_Input" / "ISIC_2019_Training_Input"
     if not image_root.exists():
         raise FileNotFoundError(
             f"Could not find image directory at {image_root}. "
@@ -138,7 +138,9 @@ def main():
         raise ValueError("Found samples with no positive label among the 8 ISIC 2019 classes.")
 
     metadata["label"] = label_matrix.values.argmax(axis=1)
-    metadata["image_path"] = metadata["image"].astype(str).map(lambda x: Path("ISIC_2019_Training_Input") / f"{x}.jpg")
+    metadata["image_path"] = metadata["image"].astype(str).map(
+        lambda x: Path("ISIC_2019_Training_Input") / "ISIC_2019_Training_Input" / f"{x}.jpg"
+    )
     metadata["image_path"] = metadata["image_path"].map(lambda p: p.as_posix())
 
     splitter = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=args.seed)
