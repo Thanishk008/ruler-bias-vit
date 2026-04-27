@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import random
 from pathlib import Path
-from typing import Dict, Tuple
 
 import numpy as np
 import torch
@@ -15,9 +14,8 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm import tqdm
 from torchvision import transforms as T
 
-from src.dataloader import ISICDataset, get_dataloaders, get_transforms
+from src.dataloader import get_dataloaders
 from src.models.baseline_vit import BaselineViT
-from src.models.foundation_clip import CLIPLinearProbe
 from src.models.swin_transformer import SwinTransformer
 from src.techniques.technique1_debiasing import RulerCropTransform, SyntheticRulerAugmentation
 from src.techniques.technique2_attention_reg import AttentionRegularizationLoss
@@ -35,18 +33,6 @@ def _resolve_path(path: str | Path) -> Path:
     return candidate if candidate.is_absolute() else ROOT / candidate
 
 
-def _str2bool(value):
-    """Parse flexible boolean command-line values."""
-    if isinstance(value, bool):
-        return value
-    value = value.lower()
-    if value in {"true", "1", "yes", "y"}:
-        return True
-    if value in {"false", "0", "no", "n"}:
-        return False
-    raise argparse.ArgumentTypeError("Expected a boolean value.")
-
-
 def set_seed(seed: int):
     """Seed every random number generator used in training."""
     torch.manual_seed(seed)
@@ -56,14 +42,12 @@ def set_seed(seed: int):
         torch.cuda.manual_seed_all(seed)
 
 
-def build_model(model_name: str, num_classes: int, pretrained: bool):
+def build_model(model_name: str, num_classes: int):
     """Instantiate the requested backbone."""
     if model_name == "baseline":
-        return BaselineViT(num_classes=num_classes, pretrained=pretrained)
+        return BaselineViT(num_classes=num_classes)
     if model_name == "swin":
-        return SwinTransformer(num_classes=num_classes, pretrained=pretrained)
-    if model_name == "foundation":
-        return CLIPLinearProbe(num_classes=num_classes)
+        return SwinTransformer(num_classes=num_classes)
     raise ValueError(f"Unsupported model: {model_name}")
 
 
@@ -86,29 +70,6 @@ def _apply_transforms_to_loader(loader, transform):
     """Replace the underlying dataset transform in a dataloader."""
     loader.dataset.transform = transform
     return loader
-
-
-def _build_clip_transforms(train: bool):
-    """Return CLIP preprocessing, optionally with simple augmentation."""
-    base = CLIPLinearProbe.clip_transforms()
-    if not train:
-        return base
-    transforms_list = list(base.transforms)
-    augmented = []
-    inserted = False
-    for op in transforms_list:
-        if not inserted and isinstance(op, T.ToTensor):
-            augmented.extend(
-                [
-                    T.RandomHorizontalFlip(p=0.5),
-                    T.RandomVerticalFlip(p=0.5),
-                    T.RandomRotation(20),
-                    T.ColorJitter(0.2, 0.2, 0.2, 0.1),
-                ]
-            )
-            inserted = True
-        augmented.append(op)
-    return T.Compose(augmented)
 
 
 def _evaluate(model, loader, criterion, device):
@@ -175,7 +136,7 @@ def _load_checkpoint(path: Path, model, optimizer, scheduler, device):
 def main():
     """Train the requested model and save the best checkpoint."""
     parser = argparse.ArgumentParser(description="Train debiased lesion classifiers.")
-    parser.add_argument("--model", choices=["baseline", "swin", "foundation"], default="swin")
+    parser.add_argument("--model", choices=["baseline", "swin"], default="swin")
     parser.add_argument("--technique", choices=["none", "technique1", "technique2", "technique3"], default="none")
     parser.add_argument("--data_root", default="data/isic2019")
     parser.add_argument("--splits_dir", default="data/isic2019/splits/")
@@ -187,15 +148,14 @@ def main():
     parser.add_argument("--resume", default=None)
     parser.add_argument("--save_every", type=int, default=10)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--pretrained", type=_str2bool, default=True)
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--amp", action=argparse.BooleanOptionalAction, default=False, help="Enable mixed precision on CUDA.")
     args = parser.parse_args()
 
     set_seed(args.seed)
     device = torch.device(args.device if torch.cuda.is_available() or args.device == "cpu" else "cpu")
-    if args.model != "swin" and args.technique != "none":
-        raise ValueError("Techniques are only supported for the swin model. Use --technique none for baseline or foundation.")
+    if args.technique != "none" and args.model != "swin":
+        raise ValueError("Techniques are only supported for the swin model. Use --technique none for baseline.")
     data_root = _resolve_path(args.data_root)
     splits_dir = _resolve_path(args.splits_dir)
     out_dir = _resolve_path(args.out_dir)
@@ -209,30 +169,16 @@ def main():
         num_workers=args.num_workers,
     )
 
-    model = build_model(args.model, num_classes=len(CLASS_NAMES), pretrained=args.pretrained)
+    model = build_model(args.model, num_classes=len(CLASS_NAMES))
     model = model.to(device)
     use_amp = args.amp and device.type == "cuda"
     scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
 
-    if args.model == "foundation":
-        args.lr = 1e-3
-        trainable_params = model.classifier.parameters()
-    else:
-        trainable_params = filter(lambda p: p.requires_grad, model.parameters())
+    trainable_params = filter(lambda p: p.requires_grad, model.parameters())
 
     masker = None
     if args.technique == "technique3":
-        if args.model == "foundation":
-            print("technique3 is not compatible with the CLIP linear probe; skipping patch masking.")
-        else:
-            model, masker = wrap_model_with_masker(model, mask_prob=0.5)
-
-    if args.model == "foundation":
-        clip_train = _build_clip_transforms(train=True)
-        clip_eval = _build_clip_transforms(train=False)
-        dataloaders["train"] = _apply_transforms_to_loader(dataloaders["train"], clip_train)
-        for split in ["val", "test", "test_no_ruler", "test_with_ruler"]:
-            dataloaders[split] = _apply_transforms_to_loader(dataloaders[split], clip_eval)
+        model, masker = wrap_model_with_masker(model, mask_prob=0.5)
 
     if args.technique == "technique1":
         base_train_transform = dataloaders["train"].dataset.transform

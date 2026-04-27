@@ -6,7 +6,7 @@
 Project Title: Fixing Ruler Bias in Vision Transformers for Skin Lesion Classification
 
 Model Type:
-Vision Transformer + Swin Transformer + CLIP linear probe
+Vision Transformer + Swin Transformer + zero-shot CLIP inference
 
 Objective:
 Multi-class classification
@@ -31,7 +31,6 @@ List the structure of your project directory below. Add short descriptions if ne
 ```
 ruler-bias-vit/
   train.py
-  train_all.py
   test.py
   requirements.txt
   dataset_setup.py
@@ -144,13 +143,11 @@ Default training command:
 python train.py
 ```
 
-This fine-tunes `swin` from pretrained weights by default; 
-`baseline` also fine-tunes a pretrained ViT, and `foundation` keeps the CLIP backbone frozen.
+This trains `swin` from scratch; 
+`baseline` also trains from scratch.
 
-Train all three models back-to-back:
-```
-python train_all.py
-```
+`foundation` is test-only in this setup and runs zero-shot CLIP inference with pretrained CLIP weights and no checkpoint.
+The first `python test.py --model foundation` run will download the pretrained CLIP model/tokenizer from Hugging Face unless they are already cached locally.
 
 Exact commands after loading the dataset:
 ```
@@ -159,10 +156,9 @@ python train.py --model swin --technique none
 python train.py --model swin --technique technique1
 python train.py --model swin --technique technique2
 python train.py --model swin --technique technique3
-python train.py --model foundation
 
 python test.py --model baseline --ckpt models/baseline_none_best.pth
-python test.py --model foundation --ckpt models/foundation_none_best.pth
+python test.py --model foundation
 python test.py --model swin --ckpt models/swin_none_best.pth --robustness_test
 python test.py --model swin --ckpt models/swin_technique1_best.pth --robustness_test
 python test.py --model swin --ckpt models/swin_technique2_best.pth --robustness_test

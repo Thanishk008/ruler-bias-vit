@@ -12,12 +12,12 @@ from torch import nn
 class BaselineViT(nn.Module):
     """Standard ViT-B/16 classification model with attention introspection."""
 
-    def __init__(self, num_classes=8, pretrained=True):
+    def __init__(self, num_classes=8):
         """Build the baseline ViT model with an 8-class head."""
         super().__init__()
         self.model = timm.create_model(
             "vit_base_patch16_224",
-            pretrained=pretrained,
+            pretrained=False,
             num_classes=num_classes,
         )
 

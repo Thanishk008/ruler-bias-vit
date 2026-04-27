@@ -4,7 +4,7 @@ This project compares three image-classification models on the ISIC 2019 skin-le
 
 - `baseline`: ViT baseline
 - `swin`: Swin Transformer
-- `foundation`: frozen CLIP linear probe
+- `foundation`: zero-shot CLIP inference, test-only
 
 ## Dataset
 
@@ -57,7 +57,6 @@ Defaults:
 
 - model: `swin`
 - technique: `none`
-- pretrained: `True`
 
 Other useful commands:
 
@@ -66,8 +65,6 @@ python train.py --model baseline
 python train.py --model swin --technique technique1
 python train.py --model swin --technique technique2
 python train.py --model swin --technique technique3
-python train.py --model foundation
-python train_all.py
 ```
 
 ## Testing
@@ -87,7 +84,7 @@ Example test commands:
 
 ```powershell
 python test.py --model baseline --ckpt models/baseline_none_best.pth
-python test.py --model foundation --ckpt models/foundation_none_best.pth
+python test.py --model foundation
 python test.py --model swin --ckpt models/swin_none_best.pth --robustness_test
 python test.py --model swin --ckpt models/swin_technique1_best.pth --robustness_test
 python test.py --model swin --ckpt models/swin_technique2_best.pth --robustness_test
@@ -113,6 +110,7 @@ If `--robustness_test` is set, the test script also writes:
 
 ## Notes
 
-- `baseline` and `swin` fine-tune pretrained weights.
-- `foundation` keeps the CLIP backbone frozen and trains only the classifier head.
+- `baseline` and `swin` train from scratch only.
+- `foundation` is test-only in this setup and runs zero-shot CLIP inference with pretrained CLIP weights and no checkpoint.
+The first `python test.py --model foundation` run will download the pretrained CLIP model/tokenizer from Hugging Face unless they are already cached locally.
 - The requirements file installs a CUDA-enabled PyTorch build when available, so the models can use an NVIDIA GPU if one is present (using index lines in requirements.txt).

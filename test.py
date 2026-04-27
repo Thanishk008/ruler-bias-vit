@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from src.dataloader import get_dataloaders
 from src.models.baseline_vit import BaselineViT
-from src.models.foundation_clip import CLIPLinearProbe
+from src.models.foundation_clip import CLIPZeroShotClassifier
 from src.models.swin_transformer import SwinTransformer
 from src.utils import (
     compute_metrics,
@@ -33,14 +33,14 @@ def _resolve_path(path: str | Path) -> Path:
     return candidate if candidate.is_absolute() else ROOT / candidate
 
 
-def build_model(model_name: str, num_classes: int, pretrained: bool = False):
+def build_model(model_name: str, num_classes: int):
     """Instantiate the requested architecture for evaluation."""
     if model_name == "baseline":
-        return BaselineViT(num_classes=num_classes, pretrained=pretrained)
+        return BaselineViT(num_classes=num_classes)
     if model_name == "swin":
-        return SwinTransformer(num_classes=num_classes, pretrained=pretrained)
+        return SwinTransformer(num_classes=num_classes)
     if model_name == "foundation":
-        return CLIPLinearProbe(num_classes=num_classes)
+        return CLIPZeroShotClassifier(class_names=CLASS_NAMES)
     raise ValueError(f"Unsupported model: {model_name}")
 
 
@@ -84,9 +84,9 @@ def _evaluate_loader(model, loader, criterion, device):
     return avg_loss, y_true, y_pred, y_prob, image_paths
 
 
-def _maybe_build_clip_transforms(loader, train: bool = False):
+def _maybe_build_clip_transforms(loader):
     """Apply CLIP preprocessing to an already-created dataloader."""
-    transform = CLIPLinearProbe.clip_transforms()
+    transform = CLIPZeroShotClassifier.clip_transforms()
     loader.dataset.transform = transform
     return loader
 
@@ -125,7 +125,7 @@ def main():
     parser.add_argument("--model", choices=["baseline", "swin", "foundation"], default="swin")
     parser.add_argument("--data_root", default="data/isic2019")
     parser.add_argument("--splits_dir", default="data/isic2019/splits/")
-    parser.add_argument("--ckpt", default="models/swin_none_best.pth")
+    parser.add_argument("--ckpt", default=None, help="Checkpoint path for baseline or swin. Ignored for foundation.")
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--robustness_test", action="store_true")
@@ -136,7 +136,13 @@ def main():
     device = torch.device(args.device if torch.cuda.is_available() or args.device == "cpu" else "cpu")
     data_root = _resolve_path(args.data_root)
     splits_dir = _resolve_path(args.splits_dir)
-    ckpt_path = _resolve_path(args.ckpt)
+    default_ckpts = {
+        "baseline": "models/baseline_none_best.pth",
+        "swin": "models/swin_none_best.pth",
+    }
+    ckpt_path = _resolve_path(args.ckpt) if args.ckpt is not None else (
+        _resolve_path(default_ckpts[args.model]) if args.model in default_ckpts else None
+    )
 
     dataloaders, _ = get_dataloaders(
         data_root=data_root,
@@ -149,15 +155,23 @@ def main():
         for split in dataloaders:
             dataloaders[split] = _maybe_build_clip_transforms(dataloaders[split])
 
-    model = build_model(args.model, num_classes=len(CLASS_NAMES), pretrained=False).to(device)
-    _load_checkpoint(ckpt_path, model, device)
+    model = build_model(args.model, num_classes=len(CLASS_NAMES)).to(device)
+    if args.model == "foundation":
+        if args.ckpt is not None:
+            print("Ignoring --ckpt for foundation; zero-shot CLIP inference does not use a checkpoint.")
+    else:
+        if ckpt_path is None or not ckpt_path.exists():
+            raise FileNotFoundError(
+                f"Checkpoint not found for {args.model}. Provide a trained checkpoint with --ckpt, or place it at {default_ckpts.get(args.model, 'models/<model>_none_best.pth')}."
+            )
+        _load_checkpoint(ckpt_path, model, device)
     model.eval()
 
     criterion = torch.nn.CrossEntropyLoss()
     output_dir = ROOT / "outputs" / args.model
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    test_loss, test_metrics = _evaluate_and_save(
+    _test_loss, test_metrics = _evaluate_and_save(
         model,
         dataloaders["test"],
         criterion,

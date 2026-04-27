@@ -12,12 +12,12 @@ from torch import nn
 class SwinTransformer(nn.Module):
     """Swin-Tiny classifier built with timm."""
 
-    def __init__(self, num_classes=8, pretrained=True):
+    def __init__(self, num_classes=8):
         """Build the Swin-Tiny classifier with an 8-class head."""
         super().__init__()
         self.model = timm.create_model(
             "swin_tiny_patch4_window7_224",
-            pretrained=pretrained,
+            pretrained=False,
             num_classes=num_classes,
         )
 
