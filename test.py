@@ -33,6 +33,15 @@ def _resolve_path(path: str | Path) -> Path:
     return candidate if candidate.is_absolute() else ROOT / candidate
 
 
+def _resolve_output_dir(model_name: str, ckpt_path: Path | None) -> Path:
+    """Choose a unique output directory for a given evaluation run."""
+    if model_name == "foundation":
+        return ROOT / "outputs" / "foundation"
+    if ckpt_path is None:
+        raise ValueError("A checkpoint is required for baseline and swin evaluations.")
+    return ROOT / "outputs" / ckpt_path.stem
+
+
 def build_model(model_name: str, num_classes: int):
     """Instantiate the requested architecture for evaluation."""
     if model_name == "baseline":
@@ -168,7 +177,7 @@ def main():
     model.eval()
 
     criterion = torch.nn.CrossEntropyLoss()
-    output_dir = ROOT / "outputs" / args.model
+    output_dir = _resolve_output_dir(args.model, ckpt_path)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     _test_loss, test_metrics = _evaluate_and_save(

@@ -6,7 +6,9 @@
 Project Title: Fixing Ruler Bias in Vision Transformers for Skin Lesion Classification
 
 Model Type:
-Vision Transformer + Swin Transformer + zero-shot CLIP inference
+baseline - vit_base_patch16_224
+my model - swin_tiny_patch4_window7_224
+foundation - openai/clip-vit-large-patch14 (zero-shot inference)
 
 Objective:
 Multi-class classification
@@ -133,6 +135,7 @@ python test.py
 ```
 
 This evaluates `swin` with `models/swin_none_best.pth` unless you pass `--model` and `--ckpt`.
+The outputs are written to a run-specific folder under `outputs/`, derived from the checkpoint name for baseline and Swin runs.
 
 ------------------------------------------------------------
 

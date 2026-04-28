@@ -2,9 +2,9 @@
 
 This project compares three image-classification models on the ISIC 2019 skin-lesion dataset while studying ruler-bias effects:
 
-- `baseline`: ViT baseline
-- `swin`: Swin Transformer
-- `foundation`: zero-shot CLIP inference, test-only
+- `baseline`: vit_base_patch16_224
+- `swin`: swin_tiny_patch4_window7_224
+- `foundation`: openai/clip-vit-large-patch14, zero-shot inference only
 
 ## Dataset
 
@@ -95,7 +95,7 @@ python test.py --model swin --ckpt models/swin_technique3_best.pth --robustness_
 
 Training checkpoints are written under `models/`.
 
-Testing writes metrics and plots under `outputs/<model>/`, including:
+Testing writes metrics and plots under a run-specific folder under `outputs/`, derived from the checkpoint name for baseline and Swin runs, including:
 
 - `metrics.csv`
 - `confusion_matrix.png`
@@ -104,13 +104,13 @@ Testing writes metrics and plots under `outputs/<model>/`, including:
 
 If `--robustness_test` is set, the test script also writes:
 
-- `outputs/<model>/robustness_comparison.csv`
-- `outputs/<model>/test_no_ruler/`
-- `outputs/<model>/test_with_ruler/`
+- `outputs/<run_name>/robustness_comparison.csv`
+- `outputs/<run_name>/test_no_ruler/`
+- `outputs/<run_name>/test_with_ruler/`
 
 ## Notes
 
 - `baseline` and `swin` train from scratch only.
 - `foundation` is test-only in this setup and runs zero-shot CLIP inference with pretrained CLIP weights and no checkpoint.
-The first `python test.py --model foundation` run will download the pretrained CLIP model/tokenizer from Hugging Face unless they are already cached locally.
+  The first `python test.py --model foundation` run will download the pretrained CLIP model/tokenizer from Hugging Face unless they are already cached locally.
 - The requirements file installs a CUDA-enabled PyTorch build when available, so the models can use an NVIDIA GPU if one is present (using index lines in requirements.txt).
