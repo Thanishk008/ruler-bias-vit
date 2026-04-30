@@ -74,3 +74,18 @@ class CLIPZeroShotClassifier(nn.Module):
         image_features = image_features / image_features.norm(dim=-1, keepdim=True).clamp_min(1e-6)
         logit_scale = self.clip.logit_scale.exp()
         return logit_scale * image_features @ self.text_features.t()
+
+    @classmethod
+    def clip_transforms(cls):
+        """Return the CLIP preprocessing pipeline used for zero-shot inference."""
+        return T.Compose(
+            [
+                T.Resize(224, interpolation=InterpolationMode.BICUBIC),
+                T.CenterCrop(224),
+                T.ToTensor(),
+                T.Normalize(
+                    mean=[0.48145466, 0.4578275, 0.40821073],
+                    std=[0.26862954, 0.26130258, 0.27577711],
+                ),
+            ]
+        )
