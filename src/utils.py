@@ -8,7 +8,7 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 import torch
-from PIL import Image, ImageDraw
+from PIL import Image
 from matplotlib import pyplot as plt
 from sklearn.metrics import (
     accuracy_score,
@@ -64,20 +64,12 @@ def _denormalize_image(image_tensor: torch.Tensor, model_type: str) -> np.ndarra
 
 
 def generate_gradcam(model, image_tensor, target_class, save_path, model_type):
-    """Generate and save a Grad-CAM overlay or a fallback placeholder."""
+    """Generate and save a Grad-CAM overlay."""
+    if model_type == "foundation":
+        return
+
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if model_type == "foundation":
-        canvas = Image.new("RGB", (224, 224), color="white")
-        draw = ImageDraw.Draw(canvas)
-        message = "Grad-CAM not supported for CLIP"
-        bbox = draw.textbbox((0, 0), message)
-        x = (224 - (bbox[2] - bbox[0])) // 2
-        y = (224 - (bbox[3] - bbox[1])) // 2
-        draw.text((x, y), message, fill="black")
-        canvas.save(save_path)
-        return
 
     if model_type == "baseline":
         target_layers = [model.model.blocks[-1].norm1]
