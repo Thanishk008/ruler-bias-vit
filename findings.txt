@@ -1,0 +1,419 @@
+Findings
+
+This file records the current codebase facts and the saved experimental outputs present in the repository snapshot.
+
+## 1. Task, models, and training setup
+
+- Task: ISIC 2019 8-class skin lesion classification.
+- Class labels: MEL, NV, BCC, AK, BKL, DF, VASC, SCC.
+- Active scripts:
+  - `train.py`
+  - `test.py`
+- Model backbones:
+  - `baseline` uses `timm.create_model("vit_base_patch16_224", pretrained=False, num_classes=8)`
+  - `swin` uses `timm.create_model("swin_tiny_patch4_window7_224", pretrained=False, num_classes=8)`
+  - `foundation` uses zero-shot CLIP inference with `openai/clip-vit-large-patch14`
+- Training policy:
+  - baseline and swin are trained from scratch
+  - techniques are only enabled for swin
+  - foundation is test-only and does not use a checkpoint
+- Default training hyperparameters in `train.py`:
+  - epochs: 50
+  - batch size: 64
+  - learning rate: 1e-4
+  - optimizer: AdamW
+  - scheduler: CosineAnnealingLR
+  - weight decay: 1e-4
+  - seed: 42
+  - save every: 10 epochs
+  - AMP: disabled by default
+
+## 2. Techniques implemented in the code
+
+- Technique 1:
+  - inserts `RulerCropTransform` and `SyntheticRulerAugmentation` before `ToTensor`
+  - goal: suppress ruler dependence and add ruler-like augmentation
+- Technique 2:
+  - uses `AttentionRegularizationLoss(lambda_weight=0.1)`
+  - goal: penalize attention on border patches
+- Technique 3:
+  - uses `BorderPatchMasker(mask_prob=0.5)`
+  - goal: mask border patch embeddings during training
+- Foundation prompts:
+  - "a dermoscopic image of {}"
+  - "a photo of {}"
+  - "a skin lesion showing {}"
+- Foundation class-name aliases:
+  - MEL -> melanoma
+  - NV -> melanocytic nevus
+  - BCC -> basal cell carcinoma
+  - AK -> actinic keratosis
+  - BKL -> benign keratosis
+  - DF -> dermatofibroma
+  - VASC -> vascular lesion
+  - SCC -> squamous cell carcinoma
+
+## 3. Dataset and split facts
+
+- Split generation uses `StratifiedShuffleSplit` with seed 42.
+- The code removes `UNK` rows and keeps only samples with exactly one positive class label.
+- Split ratio is 80/10/10 for train/val/test.
+- `test_no_ruler.csv` and `test_with_ruler.csv` are created from the same `test_df`, so they are duplicates of the same test split.
+
+### Split sizes
+
+| Split | Count |
+| --- | ---: |
+| train | 20264 |
+| val | 2533 |
+| test | 2534 |
+| test_no_ruler | 2534 |
+| test_with_ruler | 2534 |
+
+### Training class counts and class weights
+
+The training split is heavily imbalanced. The class weights in `get_dataloaders()` are computed as `total_samples / (8 * class_count)`.
+
+| Label | Class | Count | Weight |
+| --- | --- | ---: | ---: |
+| 0 | MEL | 3618 | 0.7001 |
+| 1 | NV | 10300 | 0.2459 |
+| 2 | BCC | 2658 | 0.9530 |
+| 3 | AK | 694 | 3.6499 |
+| 4 | BKL | 2099 | 1.2068 |
+| 5 | DF | 191 | 13.2618 |
+| 6 | VASC | 202 | 12.5396 |
+| 7 | SCC | 502 | 5.0458 |
+
+## 4. Saved checkpoints and output layout
+
+### Best checkpoints present in `models/`
+
+- `baseline_none_best.pth`
+- `swin_none_best.pth`
+- `swin_technique1_best.pth`
+- `swin_technique2_best.pth`
+- `swin_technique3_best.pth`
+
+### Periodic checkpoints present in `outputs/checkpoints/`
+
+Each training run saved checkpoints at epochs 10, 20, 30, 40, and 50.
+
+- `baseline_none_epoch_10.pth`
+- `baseline_none_epoch_20.pth`
+- `baseline_none_epoch_30.pth`
+- `baseline_none_epoch_40.pth`
+- `baseline_none_epoch_50.pth`
+- `swin_none_epoch_10.pth`
+- `swin_none_epoch_20.pth`
+- `swin_none_epoch_30.pth`
+- `swin_none_epoch_40.pth`
+- `swin_none_epoch_50.pth`
+- `swin_technique1_epoch_10.pth`
+- `swin_technique1_epoch_20.pth`
+- `swin_technique1_epoch_30.pth`
+- `swin_technique1_epoch_40.pth`
+- `swin_technique1_epoch_50.pth`
+- `swin_technique2_epoch_10.pth`
+- `swin_technique2_epoch_20.pth`
+- `swin_technique2_epoch_30.pth`
+- `swin_technique2_epoch_40.pth`
+- `swin_technique2_epoch_50.pth`
+- `swin_technique3_epoch_10.pth`
+- `swin_technique3_epoch_20.pth`
+- `swin_technique3_epoch_30.pth`
+- `swin_technique3_epoch_40.pth`
+- `swin_technique3_epoch_50.pth`
+
+### Test output folders present in `outputs/`
+
+- `baseline_none_best/`
+- `swin_none_best/`
+- `swin_technique1_best/`
+- `swin_technique2_best/`
+- `swin_technique3_best/`
+- `foundation/`
+
+### Files saved in each test output folder
+
+- `baseline_none_best/`
+  - `metrics.csv`
+  - `confusion_matrix.png`
+  - `pr_curve.png`
+  - `gradcam/` with 10 images
+- `swin_none_best/`
+  - `metrics.csv`
+  - `confusion_matrix.png`
+  - `pr_curve.png`
+  - `gradcam/` with 10 images
+  - `robustness_comparison.csv`
+  - `test_no_ruler/`
+  - `test_with_ruler/`
+- `swin_technique1_best/`
+  - `metrics.csv`
+  - `confusion_matrix.png`
+  - `pr_curve.png`
+  - `gradcam/` with 18 images
+  - `robustness_comparison.csv`
+  - `test_no_ruler/`
+  - `test_with_ruler/`
+- `swin_technique2_best/`
+  - `metrics.csv`
+  - `confusion_matrix.png`
+  - `pr_curve.png`
+  - `gradcam/` with 10 images
+  - `robustness_comparison.csv`
+  - `test_no_ruler/`
+  - `test_with_ruler/`
+- `swin_technique3_best/`
+  - `metrics.csv`
+  - `confusion_matrix.png`
+  - `pr_curve.png`
+  - `gradcam/` with 12 images
+  - `robustness_comparison.csv`
+  - `test_no_ruler/`
+  - `test_with_ruler/`
+- `foundation/`
+  - `metrics.csv`
+  - `confusion_matrix.png`
+  - `pr_curve.png`
+  - `gradcam/` exists but is empty
+
+## 5. Main test metrics from the saved CSV files
+
+Note: `metrics.csv` stores per-class precision, recall, and F1 plus a macro row. Accuracy is not stored in the main `metrics.csv`; it is only present in the `robustness_comparison.csv` files for the Swin runs.
+
+### Baseline
+
+| Class | Precision | Recall | F1 |
+| --- | ---: | ---: | ---: |
+| MEL | 0.5093457943925234 | 0.4823008849557522 | 0.4954545454545455 |
+| NV | 0.8391544117647058 | 0.7088509316770186 | 0.7685185185185185 |
+| BCC | 0.5321100917431193 | 0.5225225225225225 | 0.5272727272727272 |
+| AK | 0.2982456140350877 | 0.3953488372093023 | 0.34 |
+| BKL | 0.3431372549019608 | 0.2661596958174905 | 0.29978586723768735 |
+| DF | 0.10714285714285714 | 0.25 | 0.15 |
+| VASC | 0.3442622950819672 | 0.84 | 0.4883720930232558 |
+| SCC | 0.10546875 | 0.42857142857142855 | 0.16927899686520376 |
+| macro | 0.38485838363277763 | 0.4867192875941893 | 0.4048353435464923 |
+
+### Swin without techniques
+
+| Class | Precision | Recall | F1 |
+| --- | ---: | ---: | ---: |
+| MEL | 0.5066079295154186 | 0.5088495575221239 | 0.5077262693156733 |
+| NV | 0.8648111332007953 | 0.6754658385093167 | 0.7585004359197908 |
+| BCC | 0.6406926406926406 | 0.4444444444444444 | 0.524822695035461 |
+| AK | 0.2711864406779661 | 0.5581395348837209 | 0.3650190114068441 |
+| BKL | 0.3304093567251462 | 0.4296577946768061 | 0.37355371900826445 |
+| DF | 0.16279069767441862 | 0.5833333333333334 | 0.2545454545454545 |
+| VASC | 0.27380952380952384 | 0.92 | 0.42201834862385323 |
+| SCC | 0.18831168831168832 | 0.4603174603174603 | 0.2672811059907834 |
+| macro | 0.40482742632594976 | 0.5725259954609008 | 0.4341833799807656 |
+
+### Swin technique 1
+
+| Class | Precision | Recall | F1 |
+| --- | ---: | ---: | ---: |
+| MEL | 0.4935897435897436 | 0.5110619469026548 | 0.5021739130434782 |
+| NV | 0.8630831643002028 | 0.6607142857142857 | 0.7484608619173263 |
+| BCC | 0.6186770428015564 | 0.4774774774774775 | 0.5389830508474577 |
+| AK | 0.263681592039801 | 0.6162790697674418 | 0.3693379790940767 |
+| BKL | 0.3366013071895425 | 0.3916349809885932 | 0.36203866432337434 |
+| DF | 0.1839080459770115 | 0.6666666666666666 | 0.2882882882882883 |
+| VASC | 0.3108108108108108 | 0.92 | 0.46464646464646464 |
+| SCC | 0.2129032258064516 | 0.5238095238095238 | 0.30275229357798167 |
+| macro | 0.41040686656439007 | 0.5959554939158305 | 0.447085189467306 |
+
+### Swin technique 2
+
+| Class | Precision | Recall | F1 |
+| --- | ---: | ---: | ---: |
+| MEL | 0.4968553459119497 | 0.5243362831858407 | 0.5102260495156081 |
+| NV | 0.8545454545454545 | 0.6933229813664596 | 0.7655379339905701 |
+| BCC | 0.6340425531914894 | 0.44744744744744747 | 0.5246478873239436 |
+| AK | 0.25365853658536586 | 0.6046511627906976 | 0.35738831615120276 |
+| BKL | 0.3942857142857143 | 0.2623574144486692 | 0.3150684931506849 |
+| DF | 0.14953271028037382 | 0.6666666666666666 | 0.24427480916030533 |
+| VASC | 0.24271844660194175 | 1.0 | 0.390625 |
+| SCC | 0.17647058823529413 | 0.5238095238095238 | 0.264 |
+| macro | 0.40026366870469793 | 0.5903239349644132 | 0.4214710611615394 |
+
+### Swin technique 3
+
+| Class | Precision | Recall | F1 |
+| --- | ---: | ---: | ---: |
+| MEL | 0.41089108910891087 | 0.5508849557522124 | 0.4706994328922495 |
+| NV | 0.9135802469135802 | 0.5170807453416149 | 0.66038671294001 |
+| BCC | 0.5583333333333333 | 0.4024024024024024 | 0.4677137870855148 |
+| AK | 0.22093023255813954 | 0.4418604651162791 | 0.29457364341085274 |
+| BKL | 0.3129251700680272 | 0.34980988593155893 | 0.3303411131059246 |
+| DF | 0.05660377358490566 | 0.5 | 0.1016949152542373 |
+| VASC | 0.35384615384615387 | 0.92 | 0.5111111111111111 |
+| SCC | 0.1574074074074074 | 0.5396825396825397 | 0.24372759856630824 |
+| macro | 0.3730646758525573 | 0.5277151242783259 | 0.38503103929577603 |
+
+### Foundation
+
+| Class | Precision | Recall | F1 |
+| --- | ---: | ---: | ---: |
+| MEL | 0.13080895008605853 | 0.168141592920354 | 0.14714424007744434 |
+| NV | 0.5416107382550336 | 0.6265527950310559 | 0.5809935205183585 |
+| BCC | 0.425 | 0.05105105105105105 | 0.09115281501340483 |
+| AK | 0.10989010989010989 | 0.11627906976744186 | 0.11299435028248588 |
+| BKL | 0.12396694214876033 | 0.057034220532319393 | 0.078125 |
+| DF | 0.015306122448979591 | 0.125 | 0.02727272727272727 |
+| VASC | 0.0 | 0.0 | 0.0 |
+| SCC | 0.0 | 0.0 | 0.0 |
+| macro | 0.16832285785361772 | 0.14300734116277777 | 0.1297103316455526 |
+
+## 6. Robustness comparison results for the Swin runs
+
+The robustness CSVs show identical values in the `Full Test`, `No Ruler`, and `With Ruler` columns for every Swin run. This matches the code, because `test_no_ruler.csv` and `test_with_ruler.csv` are both built from the same `test_df`.
+
+| Run | Macro Recall | Macro F1 | Accuracy |
+| --- | ---: | ---: | ---: |
+| swin_none_best | 0.5725259954609008 | 0.4341833799807656 | 0.5820836621941594 |
+| swin_technique1_best | 0.5959554939158305 | 0.447085189467306 | 0.579715864246251 |
+| swin_technique2_best | 0.5903239349644132 | 0.4214710611615394 | 0.5816890292028414 |
+| swin_technique3_best | 0.5277151242783259 | 0.38503103929577603 | 0.4925019731649566 |
+
+## 7. Inference from the saved results
+
+- The dataset is strongly imbalanced, especially for DF, VASC, SCC, and AK.
+- The class-weighted loss is justified by the training distribution.
+- Baseline is a scratch-trained reference, not a pretrained fine-tune.
+- Swin without techniques is stronger than baseline on macro precision, recall, and F1.
+- Technique 1 gives the best macro recall and macro F1 among the completed runs.
+- Technique 2 is close to technique 1 on recall, but its macro F1 is lower.
+- Technique 3 is the weakest of the Swin runs and drops sharply in accuracy.
+- Foundation zero-shot CLIP is far below the trained models on this task.
+- The `test_no_ruler` and `test_with_ruler` outputs are identical to the full test outputs because they are built from the same split. That makes the robustness tables a pipeline sanity check rather than a real ruler-bias comparison on this dataset.
+- Baseline and Swin are compliant with the no-pretraining requirement.
+- Foundation is inference-only, and the repo no longer writes a fake Grad-CAM image for it.
+
+## 8. Important notes and limitations for the report
+
+- The project is motivated by ruler bias in dermoscopic images, but the processed ISIC 2019 setup used here does not provide explicit ruler/no-ruler annotations.
+- Because ruler annotations are unavailable, the project should be framed as ruler-like border artifact sensitivity and mitigation, not as a direct measurement of true ruler-present versus ruler-absent bias.
+- The no-ruler and with-ruler test splits are duplicated from the same test split. Their identical metrics should be described as a pipeline sanity check, not as evidence that the model is robust to real rulers.
+- The implemented techniques are still relevant to the ruler-bias motivation because they target border artifacts and ruler-like visual shortcuts:
+  - Technique 1 uses border cropping plus synthetic ruler-like augmentation.
+  - Technique 2 penalizes attention on border patches.
+  - Technique 3 masks border patch embeddings during training.
+- Adding an external ruler-image dataset at this stage is not recommended unless it is cleanly labeled with the same 8 class mapping: MEL, NV, BCC, AK, BKL, DF, VASC, SCC.
+- A rushed external dataset could weaken the project because label mappings, class definitions, dataset shift, and ruler annotations would all need careful validation.
+- The safer report framing is: "Because ISIC 2019 does not provide explicit ruler annotations in our processed split, we evaluate ruler-like artifact mitigation using proxy interventions and qualitative Grad-CAM/error analysis. This is a limitation of the study."
+- Foundation does not need an epoch trend because it is zero-shot inference only and is not trained.
+- Swin Technique 3 is missing the epoch 21-30 trend due to unrecoverable Colab logs. The report should state this transparently while noting that checkpoints and final evaluation artifacts were preserved.
+
+## 9. Latest audit notes from Project 2 PDF and README template
+
+This section records the latest submission-audit findings. It is intended to help write the final report and clean the submission README.
+
+### Final submission status
+
+- Project 2 Part 1/proposal is treated as complete and is not the focus of the remaining work.
+- For Project 2 Part 2 onward, the experiment package is mostly complete: code, checkpoints, metrics, plots, Grad-CAM outputs, robustness CSVs, and epoch-trend images are present.
+- The final written report is the main remaining deliverable. In the parent project folder, `Report.docx` was checked and was 0 bytes at the time of audit.
+- A final presentation artifact was not found in the parent project folder. The visible presentation files are `Project 2 Proposal.pptx` and `Project 2-1.mp4`, which appear to be Part 1/proposal artifacts.
+- The final report and final presentation must be created or verified elsewhere before submission.
+
+### PDF final report requirements to cover
+
+- Project Goal:
+  - Restate the objective.
+  - Briefly reflect on whether the goal was achieved.
+- Input and Ground Truth:
+  - Describe RGB dermoscopic image inputs.
+  - Describe the 8 diagnostic class labels.
+  - State that `UNK` is excluded.
+- Dataset Description:
+  - Name ISIC 2019 as the dataset.
+  - Include the Kaggle source.
+  - Include split sizes and class distribution.
+  - State that the dataset is public.
+- Data Processing:
+  - Describe resizing/cropping, train augmentations, ImageNet normalization for trained models, and CLIP normalization for foundation.
+  - Describe stratified 80/10/10 train/val/test split generation.
+  - Explain that no test images are used for training or checkpoint selection.
+  - Explain class weighting for imbalance.
+  - Explicitly state the ruler-label limitation and duplicated robustness splits.
+- Methodology:
+  - Baseline Model: scratch-trained `vit_base_patch16_224`.
+  - Transformer Model Architecture: scratch-trained `swin_tiny_patch4_window7_224`.
+  - Training Details and Reproducibility: PyTorch stack, seed 42, AdamW, CosineAnnealingLR, LR 1e-4, weight decay 1e-4, 50 epochs, checkpointing every 10 epochs, best checkpoint chosen by validation macro recall.
+- Performance Improvement Techniques:
+  - Technique 1: border/ruler crop plus synthetic ruler-like augmentation.
+  - Technique 2: border-patch attention regularization.
+  - Technique 3: border-patch masking.
+  - Report and analyze the effect of each technique relative to Swin none.
+- Performance Evaluation:
+  - Define macro precision, macro recall, macro F1, accuracy, confusion matrix, PR curve, and Grad-CAM.
+  - Justify macro metrics because the dataset is imbalanced.
+- Comparison of Approaches:
+  - Compare baseline, Swin none, Swin technique 1, Swin technique 2, Swin technique 3, and foundation.
+  - State that Swin technique 1 is the best saved run by macro recall and macro F1.
+- Foundation Model Comparison:
+  - Explain that foundation is zero-shot CLIP inference using `openai/clip-vit-large-patch14`.
+  - Explain that it is pretrained by design and not trained in this project.
+  - Explain underperformance using domain mismatch, no task-specific training, prompt limitations, class imbalance, and subtle dermatology labels.
+- Error and Failure Analysis:
+  - Use confusion matrices, PR curves, class-wise metrics, and Grad-CAM examples.
+  - Discuss minority-class failures, especially DF, SCC, and VASC behavior.
+  - Discuss the tendency for some runs to increase recall at the cost of precision.
+- Team Collaboration:
+  - Add how the team coordinated and integrated shared baseline/foundation/model outputs.
+- Individual Contributions:
+  - Add each team member's specific work.
+- Conclusion:
+  - Summarize key findings.
+  - Discuss limitations and future improvements, including real ruler annotations or a curated ruler-present test set.
+
+### Rubric status from latest audit
+
+- Final Implementation:
+  - Baseline implementation is strong.
+  - Proposed Swin implementation is strong.
+  - Data processing and splits are mostly strong.
+  - Reproducibility is supported by code, README commands, requirements, checkpoints, and epoch trends, but the report must document hardware/runtime details.
+  - Training stability is supported by epoch-trend images, except Swin Technique 3 is missing epochs 21-30.
+- Performance Improvement Techniques:
+  - All three required techniques are implemented and evaluated.
+- Experimental Results and Analysis:
+  - Quantitative artifacts exist.
+  - The report still needs interpretation and failure analysis.
+- Foundation Model Comparison:
+  - Foundation inference is implemented and evaluated.
+  - The report must clearly distinguish foundation inference from scratch-trained baseline/Swin.
+- Communication and Teamwork:
+  - Cannot be scored from code artifacts alone.
+  - Must be written in the report.
+
+### README.txt template status after cleanup
+
+- `README.txt` now follows the provided template more closely.
+- The project overview, model names, objective, dataset link, expected sanity metrics, repository tree, dataset setup, checkpoint placement, dependency instructions, train commands, test commands, and submission checklist are filled in.
+- The dataset section is marked as Option C: CSV Split File because the repo uses generated split CSVs under `data/isic2019/splits/`.
+- The README includes concrete sanity metrics:
+  - Default Swin none checkpoint: Macro Recall about 0.5725, Macro F1 about 0.4342.
+  - Best Swin Technique 1 checkpoint: Macro Recall about 0.5960, Macro F1 about 0.4471.
+- The README lists all best checkpoints:
+  - `baseline_none_best.pth`
+  - `swin_none_best.pth`
+  - `swin_technique1_best.pth`
+  - `swin_technique2_best.pth`
+  - `swin_technique3_best.pth`
+- Remaining README action:
+  - Replace `TODO: add Box link before submission.` with the required Box link for the best model checkpoints.
+  - Confirm Box access is granted to `yusun@usf.edu` and `kandiyana@usf.edu`.
+
+### Report-ready main conclusion
+
+- The baseline ViT trained from scratch is a valid reference model.
+- Swin trained from scratch improves over the baseline on macro precision, macro recall, and macro F1.
+- Technique 1 gives the best overall macro recall and macro F1 among the completed trained runs.
+- Technique 2 improves recall relative to Swin none but has weaker macro F1 than Technique 1.
+- Technique 3 underperforms the other Swin variants and appears to reduce overall classification quality.
+- Zero-shot CLIP foundation inference performs much worse than the trained models, which is expected because it is not trained or fine-tuned on ISIC 2019.
+- The study supports the usefulness of targeted border-artifact mitigation as a proxy method, but it cannot claim true ruler/no-ruler robustness without explicit ruler annotations.

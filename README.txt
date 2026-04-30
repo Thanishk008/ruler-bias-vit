@@ -1,41 +1,46 @@
-# README Template
+# README
 ------------------------------------------------------------
 
 ## 1. Project Overview
 
-Project Title: Fixing Ruler Bias in Vision Transformers for Skin Lesion Classification
+Project Title:
+Fixing Ruler-Like Border Artifact Bias in Vision Transformers for Skin Lesion Classification
 
 Model Type:
 baseline - vit_base_patch16_224
-my model - swin_tiny_patch4_window7_224
+proposed model - swin_tiny_patch4_window7_224
 foundation - openai/clip-vit-large-patch14 (zero-shot inference)
 
 Objective:
-Multi-class classification
+Multi-class skin lesion classification.
 
 Dataset Used:
 ISIC 2019 Kaggle dataset: https://www.kaggle.com/datasets/andrewmvd/isic-2019
 
 Classes used:
-8 diagnostic classes from ISIC 2019
+8 diagnostic classes from ISIC 2019: MEL, NV, BCC, AK, BKL, DF, VASC, SCC.
 The UNK class is excluded.
 
-Expected test evaluation for sanity check: 
-The test script should run end-to-end, produce finite metrics, and save the expected output files; 
-exact values vary by checkpoint, split, and training time.
+Expected test evaluation for sanity check:
+Default Swin no-technique checkpoint:
+Macro Recall approximately 0.5725, Macro F1 approximately 0.4342.
+
+Best Swin Technique 1 checkpoint:
+Macro Recall approximately 0.5960, Macro F1 approximately 0.4471.
 
 ------------------------------------------------------------
 
 ## 2. Repository Structure
 
-List the structure of your project directory below. Add short descriptions if needed.
-
 ```
 ruler-bias-vit/
   train.py
   test.py
-  requirements.txt
   dataset_setup.py
+  requirements.txt
+  README.txt
+  README.md
+
   src/
     __init__.py
     dataloader.py
@@ -50,20 +55,108 @@ ruler-bias-vit/
       technique1_debiasing.py
       technique2_attention_reg.py
       technique3_patch_masking.py
-  models/                 (checkpoint goes here)
-  outputs/                (evaluation outputs and plots)
-  data/                   (dataset location)
-  README.txt
+
+  models/
+    baseline_none_best.pth
+    swin_none_best.pth
+    swin_technique1_best.pth
+    swin_technique2_best.pth
+    swin_technique3_best.pth
+
+  outputs/
+    checkpoints/
+      baseline_none_epoch_10.pth
+      ...
+      swin_technique3_epoch_50.pth
+
+    baseline_none_best/
+      metrics.csv
+      confusion_matrix.png
+      pr_curve.png
+      gradcam/
+      epoch_trend/
+
+    swin_none_best/
+      metrics.csv
+      confusion_matrix.png
+      pr_curve.png
+      robustness_comparison.csv
+      gradcam/
+      epoch_trend/
+      test_no_ruler/
+      test_with_ruler/
+
+    swin_technique1_best/
+      metrics.csv
+      confusion_matrix.png
+      pr_curve.png
+      robustness_comparison.csv
+      gradcam/
+      epoch_trend/
+      test_no_ruler/
+      test_with_ruler/
+
+    swin_technique2_best/
+      metrics.csv
+      confusion_matrix.png
+      pr_curve.png
+      robustness_comparison.csv
+      gradcam/
+      epoch_trend/
+      test_no_ruler/
+      test_with_ruler/
+
+    swin_technique3_best/
+      metrics.csv
+      confusion_matrix.png
+      pr_curve.png
+      robustness_comparison.csv
+      gradcam/
+      epoch_trend/
+      test_no_ruler/
+      test_with_ruler/
+
+    foundation/
+      metrics.csv
+      confusion_matrix.png
+      pr_curve.png
+      gradcam/              (empty; Grad-CAM is skipped for zero-shot CLIP)
+
+  data/
+    isic2019/
+      ISIC_2019_Training_Input/
+        ISIC_2019_Training_Input/
+          <image_id>.jpg
+      ISIC_2019_Training_GroundTruth.csv
+      ISIC_2019_Training_Metadata.csv
+      splits/
+        train.csv
+        val.csv
+        test.csv
+        test_no_ruler.csv
+        test_with_ruler.csv
 ```
 
 ------------------------------------------------------------
 
-## 3. Dataset Setup
+## 3. Dataset Setup - Option C: CSV Split File
 
 Dataset Link:
 https://www.kaggle.com/datasets/andrewmvd/isic-2019
 
-Expected layout after download:
+Path to generated CSV split files:
+```
+data/isic2019/splits/
+```
+
+CSV format:
+```
+image_path,label,split
+ISIC_2019_Training_Input/ISIC_2019_Training_Input/<image_id>.jpg,0,train
+ISIC_2019_Training_Input/ISIC_2019_Training_Input/<image_id>.jpg,1,test
+```
+
+Expected dataset layout after download:
 ```
 data/
   isic2019/
@@ -75,34 +168,41 @@ data/
     splits/
 ```
 
-`dataset_setup.py` will download the dataset with KaggleHub if `data/isic2019/` is missing. 
-This setup expects the latest KaggleHub release, which requires Python 3.10+.
-You can also download the dataset manually from Kaggle and place it there first, then generate the split CSVs:
+`dataset_setup.py` will download the dataset with KaggleHub if `data/isic2019/` is missing.
+This setup expects Python 3.10+.
+You can also download the dataset manually from Kaggle and place it there first.
 
-Run the bewlo command only after activating the virtual environment. (Instructions are further down)
+Run the below command after activating the virtual environment:
 ```
 python dataset_setup.py
 ```
 
 Notes:
-- `dataset_setup.py` excludes `UNK` and uses the 8 real diagnostic classes.
-- ISIC 2019 does not include ruler annotations, so `test_no_ruler.csv` and `test_with_ruler.csv` are duplicated from the same test split.
-- The script generates the split CSVs and can fetch the dataset automatically if needed.
+- `dataset_setup.py` excludes `UNK` and uses the 8 diagnostic classes.
+- The script creates stratified train/validation/test CSV splits.
+- ISIC 2019 does not include explicit ruler annotations in this setup, so `test_no_ruler.csv` and `test_with_ruler.csv` are duplicated from the same test split and should be interpreted only as a pipeline sanity check.
+
 ------------------------------------------------------------
 
 ## 4. Model Checkpoint
 
-Box Link to Best Model Checkpoint:
-{}
+Box Link to Best Model Checkpoints:
+TODO: add Box link before submission.
 
 Give access to:
 yusun@usf.edu, kandiyana@usf.edu
 
-Where to place the checkpoint after downloading:
+Where to place checkpoints:
 ```
 models/
+  baseline_none_best.pth
   swin_none_best.pth
+  swin_technique1_best.pth
+  swin_technique2_best.pth
+  swin_technique3_best.pth
 ```
+
+Foundation uses zero-shot CLIP inference and does not use a project checkpoint.
 
 ------------------------------------------------------------
 
@@ -111,19 +211,19 @@ models/
 Python Version:
 3.10+
 
-How to install all dependencies (e.g. requirements.txt):
-
-Using pip:
+Install dependencies:
 ```
 pip install -r requirements.txt
 ```
 
-Virtual Env:
+Virtual environment setup:
 ```
 python -m venv venv
 .\venv\Scripts\activate
 pip install -r requirements.txt
 ```
+
+The requirements file installs a CUDA-enabled PyTorch build when available.
 
 ------------------------------------------------------------
 
@@ -134,8 +234,23 @@ Default test command:
 python test.py
 ```
 
-This evaluates `swin` with `models/swin_none_best.pth` unless you pass `--model` and `--ckpt`.
-The outputs are written to a run-specific folder under `outputs/`, derived from the checkpoint name for baseline and Swin runs.
+This evaluates `swin` with `models/swin_none_best.pth` unless `--model` and `--ckpt` are provided.
+Outputs are written to a run-specific folder under `outputs/`, derived from the checkpoint name for baseline and Swin runs.
+
+Full default Swin test command:
+```
+python test.py --model swin --ckpt models/swin_none_best.pth --data_root data/isic2019 --splits_dir data/isic2019/splits --batch_size 64 --device cuda:0
+```
+
+Other test commands:
+```
+python test.py --model baseline --ckpt models/baseline_none_best.pth --data_root data/isic2019 --splits_dir data/isic2019/splits --batch_size 64 --device cuda:0
+python test.py --model foundation --data_root data/isic2019 --splits_dir data/isic2019/splits --batch_size 64 --device cuda:0
+python test.py --model swin --ckpt models/swin_none_best.pth --robustness_test --data_root data/isic2019 --splits_dir data/isic2019/splits --batch_size 64 --device cuda:0
+python test.py --model swin --ckpt models/swin_technique1_best.pth --robustness_test --data_root data/isic2019 --splits_dir data/isic2019/splits --batch_size 64 --device cuda:0
+python test.py --model swin --ckpt models/swin_technique2_best.pth --robustness_test --data_root data/isic2019 --splits_dir data/isic2019/splits --batch_size 64 --device cuda:0
+python test.py --model swin --ckpt models/swin_technique3_best.pth --robustness_test --data_root data/isic2019 --splits_dir data/isic2019/splits --batch_size 64 --device cuda:0
+```
 
 ------------------------------------------------------------
 
@@ -146,36 +261,41 @@ Default training command:
 python train.py
 ```
 
-This trains `swin` from scratch; 
-`baseline` also trains from scratch.
+This trains `swin` with `--technique none` from scratch.
+`baseline` and `swin` are always trained from scratch with `pretrained=False`.
 
-`foundation` is test-only in this setup and runs zero-shot CLIP inference with pretrained CLIP weights and no checkpoint.
+Full default Swin training command:
+```
+python train.py --model swin --technique none --data_root data/isic2019 --splits_dir data/isic2019/splits --epochs 50 --batch_size 64 --lr 1e-4 --device cuda:0 --out_dir outputs/
+```
+
+Other training commands:
+```
+python train.py --model baseline --data_root data/isic2019 --splits_dir data/isic2019/splits --epochs 50 --batch_size 64 --lr 1e-4 --device cuda:0 --out_dir outputs/
+python train.py --model swin --technique technique1 --data_root data/isic2019 --splits_dir data/isic2019/splits --epochs 50 --batch_size 64 --lr 1e-4 --device cuda:0 --out_dir outputs/
+python train.py --model swin --technique technique2 --data_root data/isic2019 --splits_dir data/isic2019/splits --epochs 50 --batch_size 64 --lr 1e-4 --device cuda:0 --out_dir outputs/
+python train.py --model swin --technique technique3 --data_root data/isic2019 --splits_dir data/isic2019/splits --epochs 50 --batch_size 64 --lr 1e-4 --device cuda:0 --out_dir outputs/
+```
+
+Optional training arguments:
+- `--resume`
+- `--save_every`
+- `--seed`
+- `--num_workers`
+- `--amp`
+
+Foundation is test-only in this setup and runs zero-shot CLIP inference with pretrained CLIP weights and no project checkpoint.
 The first `python test.py --model foundation` run will download the pretrained CLIP model/tokenizer from Hugging Face unless they are already cached locally.
-
-Exact commands after loading the dataset:
-```
-python train.py --model baseline
-python train.py --model swin --technique none
-python train.py --model swin --technique technique1
-python train.py --model swin --technique technique2
-python train.py --model swin --technique technique3
-
-python test.py --model baseline --ckpt models/baseline_none_best.pth
-python test.py --model foundation
-python test.py --model swin --ckpt models/swin_none_best.pth --robustness_test
-python test.py --model swin --ckpt models/swin_technique1_best.pth --robustness_test
-python test.py --model swin --ckpt models/swin_technique2_best.pth --robustness_test
-python test.py --model swin --ckpt models/swin_technique3_best.pth --robustness_test
-```
 
 ------------------------------------------------------------
 
 ## 8. Submission Checklist
 
 - [ ] Dataset downloaded and split CSVs created in `data/isic2019/splits/`.
-- [ ] Model checkpoint linked and instructions for placement included.
-- [ ] `requirements.txt` generated and Python version specified.
+- [ ] Best model checkpoints are included in `models/` or provided through a shared Box link.
+- [ ] `requirements.txt` and Python version are specified.
 - [ ] `python test.py` works for the default Swin checkpoint.
 - [ ] `python train.py` works for the default Swin run.
+- [ ] Foundation test runs without a project checkpoint.
 
 ------------------------------------------------------------

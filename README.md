@@ -1,20 +1,25 @@
-# Ruler Bias in Skin Lesion Classification
+# Fixing Ruler-Like Border Artifact Bias in Vision Transformers
 
-This project compares three image-classification models on the ISIC 2019 skin-lesion dataset while studying ruler-bias effects:
+This project compares scratch-trained transformer classifiers on the ISIC 2019 skin-lesion dataset and evaluates ruler-like border artifact mitigation strategies.
 
-- `baseline`: vit_base_patch16_224
-- `swin`: swin_tiny_patch4_window7_224
-- `foundation`: openai/clip-vit-large-patch14, zero-shot inference only
+- `baseline`: `vit_base_patch16_224`
+- `proposed model`: `swin_tiny_patch4_window7_224`
+- `foundation`: `openai/clip-vit-large-patch14`, zero-shot inference only
 
 ## Dataset
 
-The repo uses the ISIC 2019 Kaggle dataset:
-
+Dataset: ISIC 2019 Kaggle dataset  
 https://www.kaggle.com/datasets/andrewmvd/isic-2019
 
-Only the 8 real diagnostic classes are used. The `UNK` class is excluded.
+The project uses the 8 diagnostic classes `MEL`, `NV`, `BCC`, `AK`, `BKL`, `DF`, `VASC`, and `SCC`. The `UNK` class is excluded.
 
-Expected layout:
+This is an Option C CSV-split setup. Generate split files with:
+
+```powershell
+python dataset_setup.py
+```
+
+Expected dataset layout:
 
 ```text
 data/
@@ -25,16 +30,53 @@ data/
     ISIC_2019_Training_GroundTruth.csv
     ISIC_2019_Training_Metadata.csv
     splits/
-```
-
-Generate the split CSVs with:
-
-```powershell
-python dataset_setup.py
+      train.csv
+      val.csv
+      test.csv
+      test_no_ruler.csv
+      test_with_ruler.csv
 ```
 
 `dataset_setup.py` uses KaggleHub to download the dataset automatically if `data/isic2019/` is missing.
-The Kaggle archive nests `ISIC_2019_Training_Input` one level deep, so the raw download keeps that folder structure.
+
+## Repository Structure
+
+```text
+ruler-bias-vit/
+  train.py
+  test.py
+  dataset_setup.py
+  requirements.txt
+  README.txt
+  README.md
+  src/
+    dataloader.py
+    utils.py
+    models/
+      baseline_vit.py
+      swin_transformer.py
+      foundation_clip.py
+    techniques/
+      technique1_debiasing.py
+      technique2_attention_reg.py
+      technique3_patch_masking.py
+  models/
+    baseline_none_best.pth
+    swin_none_best.pth
+    swin_technique1_best.pth
+    swin_technique2_best.pth
+    swin_technique3_best.pth
+  outputs/
+    checkpoints/
+    baseline_none_best/
+    foundation/
+    swin_none_best/
+    swin_technique1_best/
+    swin_technique2_best/
+    swin_technique3_best/
+```
+
+Each evaluated run folder under `outputs/` contains saved metrics and plots. Trained model folders also contain Grad-CAM images and epoch-trend plots. Swin robustness runs include `robustness_comparison.csv`, `test_no_ruler/`, and `test_with_ruler/`.
 
 ## Requirements
 
@@ -45,6 +87,23 @@ The Kaggle archive nests `ISIC_2019_Training_Input` one level deep, so the raw d
 pip install -r requirements.txt
 ```
 
+The requirements file installs a CUDA-enabled PyTorch build when available.
+
+## Checkpoints
+
+Best checkpoints are included in `models/`:
+
+```text
+models/
+  baseline_none_best.pth
+  swin_none_best.pth
+  swin_technique1_best.pth
+  swin_technique2_best.pth
+  swin_technique3_best.pth
+```
+
+Foundation uses zero-shot CLIP inference and does not use a project checkpoint.
+
 ## Training
 
 Default training command:
@@ -53,18 +112,21 @@ Default training command:
 python train.py
 ```
 
-Defaults:
+This trains `swin` with `--technique none` from scratch. `baseline` and `swin` always use `pretrained=False`.
 
-- model: `swin`
-- technique: `none`
-
-Other useful commands:
+Full default Swin training command:
 
 ```powershell
-python train.py --model baseline
-python train.py --model swin --technique technique1
-python train.py --model swin --technique technique2
-python train.py --model swin --technique technique3
+python train.py --model swin --technique none --data_root data/isic2019 --splits_dir data/isic2019/splits --epochs 50 --batch_size 64 --lr 1e-4 --device cuda:0 --out_dir outputs/
+```
+
+Other training commands:
+
+```powershell
+python train.py --model baseline --data_root data/isic2019 --splits_dir data/isic2019/splits --epochs 50 --batch_size 64 --lr 1e-4 --device cuda:0 --out_dir outputs/
+python train.py --model swin --technique technique1 --data_root data/isic2019 --splits_dir data/isic2019/splits --epochs 50 --batch_size 64 --lr 1e-4 --device cuda:0 --out_dir outputs/
+python train.py --model swin --technique technique2 --data_root data/isic2019 --splits_dir data/isic2019/splits --epochs 50 --batch_size 64 --lr 1e-4 --device cuda:0 --out_dir outputs/
+python train.py --model swin --technique technique3 --data_root data/isic2019 --splits_dir data/isic2019/splits --epochs 50 --batch_size 64 --lr 1e-4 --device cuda:0 --out_dir outputs/
 ```
 
 ## Testing
@@ -75,42 +137,35 @@ Default test command:
 python test.py
 ```
 
-Defaults:
+This evaluates `swin` with `models/swin_none_best.pth`.
 
-- model: `swin`
-- checkpoint: `models/swin_none_best.pth`
-
-Example test commands:
+Full default Swin test command:
 
 ```powershell
-python test.py --model baseline --ckpt models/baseline_none_best.pth
-python test.py --model foundation
-python test.py --model swin --ckpt models/swin_none_best.pth --robustness_test
-python test.py --model swin --ckpt models/swin_technique1_best.pth --robustness_test
-python test.py --model swin --ckpt models/swin_technique2_best.pth --robustness_test
-python test.py --model swin --ckpt models/swin_technique3_best.pth --robustness_test
+python test.py --model swin --ckpt models/swin_none_best.pth --data_root data/isic2019 --splits_dir data/isic2019/splits --batch_size 64 --device cuda:0
 ```
 
-## Outputs
+Other test commands:
 
-Training checkpoints are written under `models/`.
+```powershell
+python test.py --model baseline --ckpt models/baseline_none_best.pth --data_root data/isic2019 --splits_dir data/isic2019/splits --batch_size 64 --device cuda:0
+python test.py --model foundation --data_root data/isic2019 --splits_dir data/isic2019/splits --batch_size 64 --device cuda:0
+python test.py --model swin --ckpt models/swin_none_best.pth --robustness_test --data_root data/isic2019 --splits_dir data/isic2019/splits --batch_size 64 --device cuda:0
+python test.py --model swin --ckpt models/swin_technique1_best.pth --robustness_test --data_root data/isic2019 --splits_dir data/isic2019/splits --batch_size 64 --device cuda:0
+python test.py --model swin --ckpt models/swin_technique2_best.pth --robustness_test --data_root data/isic2019 --splits_dir data/isic2019/splits --batch_size 64 --device cuda:0
+python test.py --model swin --ckpt models/swin_technique3_best.pth --robustness_test --data_root data/isic2019 --splits_dir data/isic2019/splits --batch_size 64 --device cuda:0
+```
 
-Testing writes metrics and plots under a run-specific folder under `outputs/`, derived from the checkpoint name for baseline and Swin runs, including:
+## Sanity Metrics
 
-- `metrics.csv`
-- `confusion_matrix.png`
-- `pr_curve.png`
-- `gradcam/`
+Expected approximate test metrics:
 
-If `--robustness_test` is set, the test script also writes:
-
-- `outputs/<run_name>/robustness_comparison.csv`
-- `outputs/<run_name>/test_no_ruler/`
-- `outputs/<run_name>/test_with_ruler/`
+- Default Swin no-technique checkpoint: macro recall `0.5725`, macro F1 `0.4342`
+- Best Swin Technique 1 checkpoint: macro recall `0.5960`, macro F1 `0.4471`
 
 ## Notes
 
 - `baseline` and `swin` train from scratch only.
-- `foundation` is test-only in this setup and runs zero-shot CLIP inference with pretrained CLIP weights and no checkpoint.
-  The first `python test.py --model foundation` run will download the pretrained CLIP model/tokenizer from Hugging Face unless they are already cached locally.
-- The requirements file installs a CUDA-enabled PyTorch build when available, so the models can use an NVIDIA GPU if one is present (using index lines in requirements.txt).
+- `foundation` is test-only and runs zero-shot CLIP inference with pretrained CLIP weights and no project checkpoint.
+- The first `python test.py --model foundation` run downloads the pretrained CLIP model/tokenizer from Hugging Face unless already cached.
+- ISIC 2019 does not include explicit ruler annotations in this setup, so `test_no_ruler.csv` and `test_with_ruler.csv` are duplicated from the same test split and should be interpreted as a pipeline sanity check.

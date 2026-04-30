@@ -1,0 +1,61 @@
+Project 2 Remaining Checklist
+
+This file is for internal use only and is not part of the submission.
+
+## Highest priority
+
+- [ ] Write the final report. Current parent-folder `Report.docx` was checked and is 0 bytes.
+- [ ] Create or finalize the final project presentation. Current parent-folder files show the proposal deck/video, but no final presentation artifact.
+- [ ] Replace the checkpoint Box link placeholder in `README.txt`: `TODO: add Box link before submission.`
+- [ ] Confirm the Box folder contains all required best checkpoints:
+  - `baseline_none_best.pth`
+  - `swin_none_best.pth`
+  - `swin_technique1_best.pth`
+  - `swin_technique2_best.pth`
+  - `swin_technique3_best.pth`
+- [ ] Confirm Box access is granted to `yusun@usf.edu` and `kandiyana@usf.edu`.
+
+## Final report sections still to write
+
+- [ ] Project Goal: restate objective and whether it was achieved.
+- [ ] Input and Ground Truth: describe image inputs, 8 diagnostic labels, and excluded UNK class.
+- [ ] Dataset Description: include ISIC 2019 source, dataset size, split sizes, class distribution, and public Kaggle source.
+- [ ] Data Processing: describe preprocessing, transforms, class weighting, stratified train/val/test split, and leakage avoidance.
+- [ ] Methodology - Baseline Model: describe scratch-trained ViT baseline and report baseline performance.
+- [ ] Methodology - Transformer Model Architecture: describe Swin-Tiny proposed model and why it is appropriate.
+- [ ] Methodology - Training Details and Reproducibility: include framework, dependencies, seed, optimizer, LR, epochs, batch sizes, checkpoint rule, hardware, and Colab context if used.
+- [ ] Performance Improvement Techniques: describe all three techniques and analyze their effect on performance.
+- [ ] Performance Evaluation: define macro precision, macro recall, macro F1, accuracy, PR curves, confusion matrices, and Grad-CAM.
+- [ ] Comparison of Approaches: compare baseline, Swin none, Swin technique 1, Swin technique 2, Swin technique 3, and foundation.
+- [ ] Foundation Model Comparison: explain zero-shot CLIP inference and why it underperforms trained models.
+- [ ] Error and Failure Analysis: interpret confusion matrices, PR curves, Grad-CAM samples, and minority-class failures.
+- [ ] Team Collaboration: describe how the team coordinated and integrated work.
+- [ ] Individual Contributions: list each member's contribution clearly.
+- [ ] Conclusion: summarize results, lessons learned, limitations, and future work.
+
+## Required limitation wording for report
+
+- [ ] State that ISIC 2019 in this processed setup does not provide explicit ruler/no-ruler annotations.
+- [ ] Frame the project as ruler-like border artifact sensitivity and mitigation, not direct measurement of true ruler-present versus ruler-absent bias.
+- [ ] State that `test_no_ruler.csv` and `test_with_ruler.csv` are duplicated from the same test split.
+- [ ] Present identical robustness metrics as a pipeline sanity check, not evidence of real ruler robustness.
+- [ ] Mention that adding an external ruler dataset was skipped because matching labels, class definitions, and ruler annotations would require careful validation.
+
+## Training and artifact notes for report
+
+- [ ] Mention baseline and Swin are trained from scratch with `pretrained=False`.
+- [ ] Mention foundation is inference-only zero-shot CLIP and does not need a checkpoint or epoch trend.
+- [ ] Mention Swin Technique 3 is missing epoch trend logs for epochs 21-30 due to unrecoverable Colab logs.
+- [ ] State that final checkpoints and evaluation artifacts were preserved despite the Technique 3 log gap.
+- [ ] Include epoch trend plots for baseline, Swin none, Swin technique 1, Swin technique 2, and Swin technique 3.
+- [ ] Include metrics tables from `outputs/*/metrics.csv`.
+- [ ] Include confusion matrices and PR curves for all evaluated runs.
+- [ ] Include Grad-CAM examples for baseline and Swin runs.
+- [ ] Explain that foundation Grad-CAM is skipped because CLIP zero-shot inference does not use the same classifier/Grad-CAM path.
+
+## Final packaging checks
+
+- [ ] Confirm the required Box checkpoint link is present in `README.txt`.
+- [ ] Confirm `python test.py` works for the default Swin checkpoint in the final submitted environment.
+- [ ] Confirm `python train.py` works for the default Swin run in the final submitted environment.
+- [ ] Confirm final report and final presentation are included or submitted through the required course system.
