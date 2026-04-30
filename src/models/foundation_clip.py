@@ -60,7 +60,7 @@ class CLIPZeroShotClassifier(nn.Module):
                 prompts = [template.format(label_text) for template in self.prompt_templates]
                 tokenized = self.tokenizer(prompts, padding=True, return_tensors="pt")
                 tokenized = {key: value.to(device) for key, value in tokenized.items()}
-                features = self.clip.get_text_features(**tokenized)
+                features = self.clip.get_text_features(**tokenized).pooler_output
                 features = features / features.norm(dim=-1, keepdim=True).clamp_min(1e-6)
                 features = features.mean(dim=0)
                 features = features / features.norm(dim=-1, keepdim=True).clamp_min(1e-6)
@@ -70,7 +70,7 @@ class CLIPZeroShotClassifier(nn.Module):
     def forward(self, x):
         """Run zero-shot CLIP inference with fixed class prompts."""
         with torch.no_grad():
-            image_features = self.clip.get_image_features(pixel_values=x)
+            image_features = self.clip.get_image_features(pixel_values=x).pooler_output
         image_features = image_features / image_features.norm(dim=-1, keepdim=True).clamp_min(1e-6)
         logit_scale = self.clip.logit_scale.exp()
         return logit_scale * image_features @ self.text_features.t()
