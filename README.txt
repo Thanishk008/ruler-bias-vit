@@ -65,9 +65,26 @@ ruler-bias-vit/
 
   outputs/
     checkpoints/
-      baseline_none_epoch_10.pth
-      ...
-      swin_technique3_epoch_50.pth
+      baseline/
+        baseline_none_epoch_10.pth
+        ...
+        baseline_none_epoch_50.pth
+      swin_no_technique/
+        swin_none_epoch_10.pth
+        ...
+        swin_none_epoch_50.pth
+      swin_technique_1/
+        swin_technique1_epoch_10.pth
+        ...
+        swin_technique1_epoch_50.pth
+      swin_technique_2/
+        swin_technique2_epoch_10.pth
+        ...
+        swin_technique2_epoch_50.pth
+      swin_technique_3/
+        swin_technique3_epoch_10.pth
+        ...
+        swin_technique3_epoch_50.pth
 
     baseline_none_best/
       metrics.csv

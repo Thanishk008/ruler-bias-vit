@@ -119,6 +119,17 @@ def _save_checkpoint(path: Path, epoch: int, model, optimizer, scheduler, best_v
     )
 
 
+def _checkpoint_run_dir(out_dir: Path, model_name: str, technique: str) -> Path:
+    """Return the documented periodic-checkpoint directory for a run."""
+    if model_name == "baseline":
+        run_name = "baseline"
+    elif technique == "none":
+        run_name = "swin_no_technique"
+    else:
+        run_name = f"swin_{technique.replace('technique', 'technique_')}"
+    return out_dir / "checkpoints" / run_name
+
+
 def _load_checkpoint(path: Path, model, optimizer, scheduler, device):
     """Restore model, optimizer, and scheduler state from a checkpoint."""
     checkpoint = torch.load(path, map_location=device)
@@ -201,7 +212,7 @@ def main():
         start_epoch = last_epoch + 1
 
     best_model_path = ROOT / "models" / f"{args.model}_{args.technique}_best.pth"
-    checkpoint_dir = out_dir / "checkpoints"
+    checkpoint_dir = _checkpoint_run_dir(out_dir, args.model, args.technique)
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     for epoch in range(start_epoch, args.epochs + 1):

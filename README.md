@@ -68,6 +68,11 @@ ruler-bias-vit/
     swin_technique3_best.pth
   outputs/
     checkpoints/
+      baseline/
+      swin_no_technique/
+      swin_technique_1/
+      swin_technique_2/
+      swin_technique_3/
     baseline_none_best/
     foundation/
     swin_none_best/
