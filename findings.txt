@@ -97,33 +97,15 @@ The training split is heavily imbalanced. The class weights in `get_dataloaders(
 
 ### Periodic checkpoints present in `outputs/checkpoints/`
 
-Each training run saved checkpoints at epochs 10, 20, 30, 40, and 50.
+Each training run saved checkpoints at epochs 10, 20, 30, 40, and 50. The current repo stores them in per-run subfolders:
 
-- `baseline_none_epoch_10.pth`
-- `baseline_none_epoch_20.pth`
-- `baseline_none_epoch_30.pth`
-- `baseline_none_epoch_40.pth`
-- `baseline_none_epoch_50.pth`
-- `swin_none_epoch_10.pth`
-- `swin_none_epoch_20.pth`
-- `swin_none_epoch_30.pth`
-- `swin_none_epoch_40.pth`
-- `swin_none_epoch_50.pth`
-- `swin_technique1_epoch_10.pth`
-- `swin_technique1_epoch_20.pth`
-- `swin_technique1_epoch_30.pth`
-- `swin_technique1_epoch_40.pth`
-- `swin_technique1_epoch_50.pth`
-- `swin_technique2_epoch_10.pth`
-- `swin_technique2_epoch_20.pth`
-- `swin_technique2_epoch_30.pth`
-- `swin_technique2_epoch_40.pth`
-- `swin_technique2_epoch_50.pth`
-- `swin_technique3_epoch_10.pth`
-- `swin_technique3_epoch_20.pth`
-- `swin_technique3_epoch_30.pth`
-- `swin_technique3_epoch_40.pth`
-- `swin_technique3_epoch_50.pth`
+- `outputs/checkpoints/baseline/` with 5 baseline epoch checkpoints
+- `outputs/checkpoints/swin_no_technique/` with 5 Swin no-technique epoch checkpoints
+- `outputs/checkpoints/swin_technique_1/` with 5 Swin Technique 1 epoch checkpoints
+- `outputs/checkpoints/swin_technique_2/` with 5 Swin Technique 2 epoch checkpoints
+- `outputs/checkpoints/swin_technique_3/` with 5 Swin Technique 3 epoch checkpoints
+
+Total periodic checkpoints present: 25.
 
 ### Test output folders present in `outputs/`
 
@@ -417,3 +399,206 @@ This section records the latest submission-audit findings. It is intended to hel
 - Technique 3 underperforms the other Swin variants and appears to reduce overall classification quality.
 - Zero-shot CLIP foundation inference performs much worse than the trained models, which is expected because it is not trained or fine-tuned on ISIC 2019.
 - The study supports the usefulness of targeted border-artifact mitigation as a proxy method, but it cannot claim true ruler/no-ruler robustness without explicit ruler annotations.
+
+## 10. Final repo-side readiness audit on 2026-05-02
+
+This section records the latest repo-side audit after the final project requirements and artifacts were added.
+
+### Repo-side status
+
+- Overall repo-side status: good, with one intentional remaining placeholder.
+- The only visible submission placeholder in `README.txt` is the required Box link:
+  - `TODO: add Box link before submission.`
+- The README states that the Box checkpoint folder must give access to:
+  - `yusun@usf.edu`
+  - `kandiyana@usf.edu`
+- The README now reflects the current nested periodic checkpoint layout under `outputs/checkpoints/`.
+
+### Code sanity
+
+- Syntax check passed for:
+  - `train.py`
+  - `test.py`
+  - `dataset_setup.py`
+  - `src/dataloader.py`
+  - `src/utils.py`
+  - `src/models/baseline_vit.py`
+  - `src/models/swin_transformer.py`
+  - `src/models/foundation_clip.py`
+  - `src/techniques/technique1_debiasing.py`
+  - `src/techniques/technique2_attention_reg.py`
+  - `src/techniques/technique3_patch_masking.py`
+- The first syntax-check attempt hit a local `__pycache__` permission issue, so the successful check used a separate bytecode cache location.
+- Search check found no active `pretrained=True`, no `--pretrained` flag, no `train_all.py` reference, and no old `CLIPLinearProbe` active path outside expected text/prompt strings.
+
+### Current checkpoint and output coverage
+
+- Best checkpoint files present:
+  - `models/baseline_none_best.pth`
+  - `models/swin_none_best.pth`
+  - `models/swin_technique1_best.pth`
+  - `models/swin_technique2_best.pth`
+  - `models/swin_technique3_best.pth`
+- Periodic checkpoint folders present:
+  - `outputs/checkpoints/baseline/`
+  - `outputs/checkpoints/swin_no_technique/`
+  - `outputs/checkpoints/swin_technique_1/`
+  - `outputs/checkpoints/swin_technique_2/`
+  - `outputs/checkpoints/swin_technique_3/`
+- Each periodic checkpoint folder contains 5 epoch checkpoints, for 25 total periodic checkpoints.
+- Test metrics exist for:
+  - baseline
+  - foundation
+  - Swin no-technique
+  - Swin Technique 1
+  - Swin Technique 2
+  - Swin Technique 3
+- Robustness comparison CSVs exist for all Swin runs:
+  - `swin_none_best`
+  - `swin_technique1_best`
+  - `swin_technique2_best`
+  - `swin_technique3_best`
+- Split CSVs are present:
+  - `train.csv`
+  - `val.csv`
+  - `test.csv`
+  - `test_no_ruler.csv`
+  - `test_with_ruler.csv`
+
+### Visualization and trend artifacts
+
+- Baseline output has metrics, confusion matrix, PR curve, 10 Grad-CAM images, and 2 epoch-trend images.
+- Foundation output has metrics, confusion matrix, and PR curve. It has 0 Grad-CAM images and 0 epoch-trend images, which is expected because foundation is zero-shot inference only and Grad-CAM is skipped for CLIP.
+- Swin no-technique output has metrics, confusion matrix, PR curve, 10 Grad-CAM images, 2 epoch-trend images, and robustness outputs.
+- Swin Technique 1 output has metrics, confusion matrix, PR curve, 18 Grad-CAM images, 2 epoch-trend images, and robustness outputs.
+- Swin Technique 2 output has metrics, confusion matrix, PR curve, 10 Grad-CAM images, 1 epoch-trend image, and robustness outputs.
+- Swin Technique 3 output has metrics, confusion matrix, PR curve, 12 Grad-CAM images, 2 epoch-trend images, and robustness outputs.
+- Robustness subfolders have 0 Grad-CAM images because robustness evaluation was run with `gradcam_samples=0` for those split-level evaluations. This is expected from the test pipeline.
+
+### Latest metric snapshot
+
+| Run | Macro Precision | Macro Recall | Macro F1 |
+| --- | ---: | ---: | ---: |
+| baseline_none_best | 0.38485838363277763 | 0.4867192875941893 | 0.4048353435464923 |
+| swin_none_best | 0.40482742632594976 | 0.5725259954609008 | 0.4341833799807656 |
+| swin_technique1_best | 0.41040686656439007 | 0.5959554939158305 | 0.447085189467306 |
+| swin_technique2_best | 0.40026366870469793 | 0.5903239349644132 | 0.4214710611615394 |
+| swin_technique3_best | 0.3730646758525573 | 0.5277151242783259 | 0.38503103929577603 |
+| foundation | 0.16832285785361772 | 0.14300734116277777 | 0.1297103316455526 |
+
+### Final repo-side conclusion
+
+- The repo side is ready except for replacing the Box link placeholder in `README.txt`.
+- The experiment package is complete enough for report writing: code, checkpoints, split CSVs, metrics, plots, Grad-CAM outputs, robustness outputs, and epoch trends are present.
+- The strongest trained result remains Swin Technique 1 by macro recall and macro F1.
+- The main non-code caveats remain unchanged:
+  - The final report and final presentation must still be completed/submitted.
+  - The ruler/no-ruler robustness outputs must be described as a proxy/pipeline sanity check because explicit ruler annotations are not available in the processed ISIC 2019 setup.
+  - The Technique 3 epoch 21-30 trend gap should be disclosed in the report.
+
+## 11. Final PDF/template-aligned audit on 2026-05-02
+
+### Scope checked
+
+- Re-read `Project 2-1.pdf` and verified the project against Project 2 Part 2 onward: final implementation, three improvement techniques, experimental analysis, foundation comparison, report/presentation requirements, and graduate rubric categories.
+- Re-read `README_template.txt` and compared it against current `README.txt`.
+- Re-checked repo code, checkpoints, output folders, split files, and documented commands.
+
+### Fixes made during this final audit
+
+- Fixed the foundation CLIP wrapper in `src/models/foundation_clip.py` so text/image feature extraction works with tensor-returning Hugging Face `CLIPModel.get_text_features(...)` and `get_image_features(...)` APIs, while still tolerating model-output objects that expose `pooler_output`.
+- Fixed `train.py` periodic checkpoint wiring so new runs save checkpoint snapshots into the documented nested folders:
+  - `outputs/checkpoints/baseline/`
+  - `outputs/checkpoints/swin_no_technique/`
+  - `outputs/checkpoints/swin_technique_1/`
+  - `outputs/checkpoints/swin_technique_2/`
+  - `outputs/checkpoints/swin_technique_3/`
+- Re-ran syntax compilation after these fixes; compilation passed for all main scripts and project modules.
+
+### README template alignment
+
+- `README.txt` fills all required template sections:
+  - project overview
+  - repository structure
+  - dataset option
+  - model checkpoint location/link
+  - requirements
+  - test command
+  - training command
+  - submission checklist
+- Dataset option is correctly documented as Option C, not Option A. The project uses a public Kaggle source, but the runnable repo depends on generated CSV split files rather than a public dataset that already provides fixed train/val/test folders.
+- The only intentionally incomplete README template item is still the Box link placeholder:
+  - `TODO: add Box link before submission.`
+- Access emails are documented:
+  - `yusun@usf.edu`
+  - `kandiyana@usf.edu`
+
+### PDF/rubric alignment status
+
+- Baseline model implementation: satisfied repo-side. Baseline ViT is implemented, scratch-trained, checkpointed, tested, and has metrics/plots/Grad-CAM artifacts.
+- Proposed transformer model implementation: satisfied repo-side. Swin-Tiny is implemented, scratch-trained, checkpointed, tested, and compared across no-technique plus three technique runs.
+- Data processing and splits: satisfied repo-side. Stratified train/val/test CSV splits exist, UNK is excluded, and class labels are encoded consistently.
+- Reproducibility details: partially repo-side, must be fully written in the report. Code exposes seed, batch size, epochs, LR, optimizer, scheduler, AMP, resume, save frequency, device, data paths, and dependencies.
+- Training stability/correctness: repo-side artifacts support this through best checkpoints, periodic checkpoints, metrics, and epoch-trend plots. Technique 3 still has an epoch-log gap for epochs 21-30 and should be disclosed.
+- Performance improvement techniques: satisfied repo-side. Technique 1, Technique 2, and Technique 3 are implemented and evaluated. The report must analyze each effect explicitly.
+- Experimental results and analysis: artifacts are present. The report still needs the final written tables, plots, interpretation, and failure analysis narrative.
+- Foundation model comparison: satisfied repo-side after the CLIP wrapper fix. Foundation is zero-shot inference only, uses pretrained CLIP as allowed for the foundation comparison, does not train, does not use a project checkpoint, and skips Grad-CAM.
+- Communication/teamwork: not handled by repo code. The report/presentation must still describe team collaboration and individual contributions.
+
+### Final remaining submission risks
+
+- Add the Box checkpoint link to `README.txt` before submission.
+- Complete the final written report with every required section from the PDF:
+  - project goal
+  - input and ground truth
+  - dataset description with size/class distribution/source
+  - data processing and leakage avoidance
+  - baseline details and performance
+  - transformer architecture details
+  - training and reproducibility details
+  - all three technique descriptions and impact analysis
+  - evaluation metrics and result tables/plots
+  - comparison of approaches
+  - foundation model comparison
+  - error/failure analysis
+  - team collaboration
+  - individual contributions
+  - conclusion/future work
+- Complete or finalize the final presentation.
+- In the report, be careful not to overclaim true ruler robustness because the current processed ISIC 2019 setup does not include explicit ruler/no-ruler annotations. The duplicated `test_no_ruler.csv` and `test_with_ruler.csv` outputs are only a pipeline sanity check/proxy.
+
+## 12. Final repo wiring audit after fixes on 2026-05-02
+
+### Wiring checks passed
+
+- Syntax compilation passed for all main scripts and project modules after the latest fixes.
+- `train.py --help` works from the repo `venv`.
+- `test.py --help` works from the repo `venv`. It imports a heavier evaluation stack, so it can take several seconds before printing help.
+- `train._checkpoint_run_dir(...)` now resolves to the same folders documented in `README.txt`:
+  - baseline none -> `outputs/checkpoints/baseline`
+  - Swin none -> `outputs/checkpoints/swin_no_technique`
+  - Swin Technique 1 -> `outputs/checkpoints/swin_technique_1`
+  - Swin Technique 2 -> `outputs/checkpoints/swin_technique_2`
+  - Swin Technique 3 -> `outputs/checkpoints/swin_technique_3`
+- No active `pretrained=True`, `--pretrained`, `train_all.py`, or old `CLIPLinearProbe` path was found in active code.
+- The only remaining `TODO` in submission-facing `README.txt` is the intended Box checkpoint link placeholder.
+
+### Artifact checks passed
+
+- Best checkpoints are present in `models/` for baseline and all Swin trained runs.
+- Periodic checkpoint folders each contain 5 checkpoint files, for 25 total periodic checkpoints.
+- Split CSV counts:
+  - train: 20264
+  - val: 2533
+  - test: 2534
+  - test_no_ruler: 2534
+  - test_with_ruler: 2534
+- Metrics, confusion matrix, and PR curve files are present for baseline, foundation, Swin none, and Swin Techniques 1-3.
+- Robustness CSVs and split-level metrics are present for all Swin runs.
+- Grad-CAM is present for baseline and Swin runs, and intentionally absent/empty for foundation.
+
+### Remaining non-code risks
+
+- Foundation outputs currently exist, but because the CLIP wrapper was fixed after prior foundation testing, the safest final-submission move is to re-run foundation once so `outputs/foundation/` is definitely generated by the final code.
+- The root contains a very large `data.zip` file (~9.77 GB), plus local-only folders such as `venv/`, `__pycache__/`, `.tmp/`, and `.vscode/`. These should be excluded from any manual ZIP submission unless explicitly required.
+- Git commands are blocked in this environment by Windows dubious-ownership safety, so the audit used direct filesystem and runtime checks instead of `git status`.

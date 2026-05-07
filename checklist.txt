@@ -7,6 +7,7 @@ This file is for internal use only and is not part of the submission.
 - [ ] Write the final report. Current parent-folder `Report.docx` was checked and is 0 bytes.
 - [ ] Create or finalize the final project presentation. Current parent-folder files show the proposal deck/video, but no final presentation artifact.
 - [ ] Replace the checkpoint Box link placeholder in `README.txt`: `TODO: add Box link before submission.`
+- [ ] Re-run `python test.py --model foundation ...` once after the final CLIP wrapper fix if you want the foundation metrics/artifacts to be guaranteed from the final code version.
 - [ ] Confirm the Box folder contains all required best checkpoints:
   - `baseline_none_best.pth`
   - `swin_none_best.pth`
@@ -14,6 +15,7 @@ This file is for internal use only and is not part of the submission.
   - `swin_technique2_best.pth`
   - `swin_technique3_best.pth`
 - [ ] Confirm Box access is granted to `yusun@usf.edu` and `kandiyana@usf.edu`.
+- [ ] If creating a manual submission ZIP, exclude local-only folders/files such as `venv/`, `__pycache__/`, `.tmp/`, `.vscode/`, and the large root `data.zip` unless the instructor explicitly wants them included.
 
 ## Final report sections still to write
 
